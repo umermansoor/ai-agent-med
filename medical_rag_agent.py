@@ -12,8 +12,10 @@ from langchain.chat_models import init_chat_model
 # Load shared configuration (includes dotenv loading)
 import config
 
-# Import the grader
+# Import the grader, rewriter, and answer generator
 from grader import grade_documents, GradeDocuments
+from rewriter import rewrite_question
+from generate_answer import generate_answer
 
 # LangChain imports
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -106,6 +108,89 @@ def main():
     # Test the grader
     decision = grade_documents(grader_test_state)
     print(f"Grader decision: {decision}")
+    
+    # Test the rewriter
+    print("\n" + "="*50)
+    print("TESTING QUESTION REWRITER")
+    print("="*50)
+    
+    # Test with various vague medical questions
+    test_questions = [
+        "What's wrong with the patient?",
+        "Any medicines?", 
+        "Blood work results?",
+        "What allergies?",
+        "Health problems?"
+    ]
+    
+    for question in test_questions:
+        print(f"\n📝 Original question: '{question}'")
+        
+        # Create state for rewriter with proper message objects
+        from langchain_core.messages import HumanMessage
+        rewriter_state = {
+            "messages": [HumanMessage(content=question)]
+        }
+        
+        # Rewrite the question
+        rewritten_state = rewrite_question(rewriter_state)
+        rewritten_question = rewritten_state["messages"][0]["content"]
+        
+        print(f"🔄 Rewritten question: '{rewritten_question}'")
+        print("-" * 50)
+    
+    # Test the health expert answer generator
+    print("\n" + "="*50)
+    print("TESTING HEALTH EXPERT")
+    print("="*50)
+    
+    # Test with a medical question and relevant context
+    medical_question = "What prescription medications is the patient currently taking and why?"
+    
+    # rewrite the question first
+    from langchain_core.messages import HumanMessage
+    rewriter_state = {
+        "messages": [HumanMessage(content=medical_question)]
+    }
+    rewritten_state = rewrite_question(rewriter_state)
+    medical_question = rewritten_state["messages"][0]["content"]
+
+    # grade the documents first
+    from langchain_core.messages import HumanMessage, AIMessage
+    grader_state = {
+        "messages": [
+            HumanMessage(content=medical_question),
+            AIMessage(content=context)
+        ]
+    }
+    decision = grade_documents(grader_state)
+    print(f"Grader decision: {decision}")
+
+    if decision is not "generate_answer":
+        print("Documents not relevant, rewriting question again.")
+    else:
+        # Get relevant context from retriever
+        medical_docs = retriever.invoke(medical_question)
+        medical_context = medical_docs[0].page_content if medical_docs else "No medical information found"
+        
+        print(f"🔍 Medical Question: '{medical_question}'")
+        print(f"📄 Retrieved Context: {medical_context[:200]}...")
+    
+        # Create state for health expert
+        from langchain_core.messages import HumanMessage, AIMessage
+        expert_state = {
+            "messages": [
+                HumanMessage(content=medical_question),
+                AIMessage(content=medical_context)
+            ]
+        }
+        
+        # Generate medical answer
+        answer_state = generate_answer(expert_state)
+        medical_answer = answer_state["messages"][0].content
+        
+        print(f"🏥 Health Expert Answer: {medical_answer}")
+        print("-" * 50)
 
 
 if __name__ == "__main__":

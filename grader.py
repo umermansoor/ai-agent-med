@@ -35,8 +35,8 @@ def grade_documents(
     question = state["messages"][0].content
     context = state["messages"][-1].content
 
-    print("Question:", question)
-    print("Context:", context)
+    #print("Question:", question)
+    #print("Context:", context)
 
     prompt = GRADE_PROMPT.format(question=question, context=context)
     response = (

@@ -1,15 +1,10 @@
-#!/usr/bin/env python3
+
 """
-Medical RAG System - Core Components
-A clean implementation of retriever tool, grader, rewriter, and answer generator.
+Medical RAG - Individual Components
+An Example showing retriever, grader, rewriter, and answer generator for medical Q&A.
 """
 
 import glob
-from pathlib import Path
-import os
-from langgraph.graph import MessagesState
-from langchain.chat_models import init_chat_model
-from langchain_core.messages import HumanMessage, AIMessage
 
 # Load shared configuration
 import config
@@ -20,19 +15,19 @@ from rewriter import rewrite_question
 from generate_answer import generate_answer
 
 # LangChain imports
+from langchain_core.messages import HumanMessage, AIMessage
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader
 from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_openai import OpenAIEmbeddings
 from langchain.tools.retriever import create_retriever_tool
 
-def create_medical_rag_system():
-    """Create the complete medical RAG system."""
-    print("🚀 Setting up Medical RAG System...")
+def create_medical_rag_system(patient_id: str = "drapoel") -> tuple:
+    """Load medical documents, create embeddings, store in a vector store, and set up retriever tool."""
     
-    # Load and process documents
+    # Load and process medical documents for the patient
     documents = []
-    markdown_files = glob.glob("data/**/*.md", recursive=True)
+    markdown_files = glob.glob(f"data/{patient_id}/**/*.md", recursive=True)
     
     for file_path in markdown_files:
         loader = TextLoader(file_path, encoding='utf-8')
@@ -42,15 +37,16 @@ def create_medical_rag_system():
     
     # Split documents into chunks
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
+        chunk_size=500,
+        chunk_overlap=100
     )
     doc_splits = text_splitter.split_documents(documents)
     print(f"📝 Split into {len(doc_splits)} chunks")
     
     # Create vector store and retriever
     print("🔍 Creating embeddings and vector store...")
-    embeddings = OpenAIEmbeddings()
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
     vectorstore = InMemoryVectorStore.from_documents(
         documents=doc_splits, embedding=embeddings
     )
@@ -69,7 +65,7 @@ def create_medical_rag_system():
         "Search and return information about patient medical data."
     )
     
-    print("✅ Medical RAG System ready!")
+    print("✅ Retrieval tool ready")
     return retriever, retriever_tool
 
 def test_medical_workflow():
@@ -77,7 +73,7 @@ def test_medical_workflow():
     retriever, retriever_tool = create_medical_rag_system()
     
     # Test question
-    original_question = "What medicines is the patient taking?"
+    original_question = "what prescription medications is the patient taking?"
     
     print(f"\n� Original Question: '{original_question}'")
     
@@ -115,9 +111,28 @@ def test_medical_workflow():
     else:
         print("\n\n📝 Documents not relevant - would rewrite question again")
 
+
+def test_question_rewriting():
+    """Test the question rewriting component."""
+    
+    sample_questions = [
+        "does the patient have diabetes?",
+        "list the patient's current medications",
+        "the person reported feeling fatigued and weak. what could be the cause?",
+        "what's the health status of the patient?",
+    ]
+
+    for question in sample_questions:
+        state = {"messages": [HumanMessage(content=question)]}
+        rewritten_state = rewrite_question(state)
+        improved_question = rewritten_state["messages"][0]["content"]
+        print(f"\n� Original Question: '{question}'")
+        print(f"🔄 Improved Question: '{improved_question}'")
+
 def main():
     """Main function - run the medical RAG workflow test."""
     test_medical_workflow()
+    # test_question_rewriting()
 
 if __name__ == "__main__":
     main()

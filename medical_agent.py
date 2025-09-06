@@ -2,6 +2,7 @@ from retriever import create_retriever
 from grader import grade_documents
 from rewriter import rewrite_question
 from generate_answer import generate_answer
+from judge_answer import judge_answer
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
@@ -37,6 +38,7 @@ workflow.add_node(run_retrieval_or_respond) # first node
 workflow.add_node("retrieve", ToolNode([retriever_tool])) 
 workflow.add_node(rewrite_question)
 workflow.add_node(generate_answer)
+workflow.add_node(judge_answer)
 
 workflow.add_edge(START, "run_retrieval_or_respond")
 
@@ -59,7 +61,8 @@ workflow.add_conditional_edges(
     },
 )
 
-workflow.add_edge("generate_answer", END)
+workflow.add_edge("generate_answer", "judge_answer")
+workflow.add_edge("judge_answer", END)
 workflow.add_edge("rewrite_question", "run_retrieval_or_respond")
 
 # Compile

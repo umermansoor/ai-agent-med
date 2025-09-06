@@ -10,7 +10,7 @@ import hashlib
 import config
 
 def generate_patient_data_checksum(patient_id: str) -> str:
-    """Generate single checksum for all patient data files."""
+    """Generate single checksum for all patient data files to detect if something has changed."""
     hasher = hashlib.sha256()
     markdown_files = sorted(glob.glob(f"data/{patient_id}/**/*.md", recursive=True))
     

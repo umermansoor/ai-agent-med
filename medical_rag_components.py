@@ -80,10 +80,50 @@ def test_question_rewriting():
         print(f"\n� Original Question: '{question}'")
         print(f"🔄 Improved Question: '{improved_question}'")
 
+def cosine_distance(sentence1: str, sentence2: str, print_result: bool = True) -> tuple[str, float]:
+    """Calculate cosine similarity between two sentences using embeddings."""
+    from langchain_openai import OpenAIEmbeddings
+    from sklearn.metrics.pairwise import cosine_similarity
+    import numpy as np
+
+    embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
+    
+    emb1 = embedding_model.embed_query(sentence1)
+    emb2 = embedding_model.embed_query(sentence2)
+    
+    # Reshape for sklearn
+    emb1 = np.array(emb1).reshape(1, -1)
+    emb2 = np.array(emb2).reshape(1, -1)
+    
+    score = cosine_similarity(emb1, emb2)[0][0]
+    
+
+    # return a score, i.e. very low, low, medium, high, very high semantic similarity
+    if score < 0.2:
+        similarity = "very low"
+    elif score < 0.4:
+        similarity = "low"
+    elif score < 0.6:
+        similarity = "medium"
+    elif score < 0.8:
+        similarity = "high"
+    else:
+        similarity = "very high"
+    
+    if print_result:
+        print(f"Terms: ('{sentence1}', '{sentence2}'), Similarity: {similarity}, Score: {score:.4f}")
+    
+    return similarity, score
+
 def main():
     """Main function - run the medical RAG workflow test."""
-    test_medical_workflow()
+    # test_medical_workflow()
     # test_question_rewriting()
+
+    cosine_distance("the patient is feeling tired", "the patient reports hypothyroidism")
+    cosine_distance("the patient is feeling tired", "| TSH (µIU/mL)               | 8.2     | 0.4 – 4.5            | **H** |")
+    cosine_distance("the patient is feeling tired", "patient reports fatigue")
+
 
 if __name__ == "__main__":
     main()

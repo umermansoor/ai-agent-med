@@ -63,7 +63,6 @@ Feedback:
   - Present: <comma-separated checklist items>
   - Missing: <comma-separated checklist items>
 - Impact of Missing Context on the Answer: <analysis>
-- Suggestions to Improve: <specific steps to fix answer and context>
 
 Notes:
 - Prefer concrete, clinical specifics (e.g., "TSH 8.2, Free T4 0.6") over vague mentions.

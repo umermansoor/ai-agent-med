@@ -3,11 +3,11 @@ from grader import grade_documents
 from rewriter import rewrite_question
 from generate_answer import generate_answer
 from judge_answer import judge_answer
+from custom_state import MedicalRAGState
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
 from langgraph.prebuilt import tools_condition
-from langgraph.graph import MessagesState
 from langchain.chat_models import init_chat_model
 
 import config
@@ -24,7 +24,7 @@ retriever_tool = create_retriever_tool(
     "Search patient health records and return relevant information."
 )
 
-def run_retrieval_or_respond(state: MessagesState):
+def run_retrieval_or_respond(state: MedicalRAGState):
     """Decide whether to retrieve documents or respond directly based on the question. 
     E.g. if the user asks "what is flu virus?", the LLM can respond directly without retrieval.
     """
@@ -32,7 +32,7 @@ def run_retrieval_or_respond(state: MessagesState):
     
     return {"messages": [response]}
 
-workflow = StateGraph(MessagesState)
+workflow = StateGraph(MedicalRAGState)
 
 workflow.add_node(run_retrieval_or_respond) # first node 
 workflow.add_node("retrieve", ToolNode([retriever_tool])) 
@@ -75,7 +75,9 @@ for chunk in graph.stream(
                 "role": "user",
                 "content": "Why is this patient feeling tired?",
             }
-        ]
+        ],
+        "question_id": "fatigue_001",  # ID for precise judge matching
+        "original_question": "Why is this patient feeling tired?",
     }
 ):
     for node, update in chunk.items():

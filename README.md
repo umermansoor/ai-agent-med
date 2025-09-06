@@ -38,6 +38,39 @@ data/
       *.md
 ```
 
+## Graph Flow
+
+The system uses LangGraph to orchestrate a multi-step workflow for processing medical queries:
+
+```mermaid
+graph TD
+    A[User Question] --> B[run_retrieval_or_respond]
+    B --> C{LLM Decision}
+    C -->|Use Tool| D[retrieve]
+    C -->|Direct Answer| E[END]
+    D --> F[grade_documents]
+    F -->|Relevant=1| G[generate_answer]
+    F -->|Not Relevant=0| H[rewrite_question]
+    G --> I[judge_answer]
+    H --> B
+    I --> E
+```
+
+### Flow Description:
+
+1. **Initial Decision** (`run_retrieval_or_respond`): The LLM decides whether to retrieve medical documents or respond directly
+2. **Document Retrieval** (`retrieve`): If retrieval is needed, searches patient records using vector similarity
+3. **Document Grading** (`grade_documents`): Evaluates if retrieved documents are relevant to the question
+4. **Question Rewriting** (`rewrite_question`): If documents aren't relevant, rewrites the question with medical terminology
+5. **Answer Generation** (`generate_answer`): Creates a medical answer using relevant retrieved context
+6. **Answer Judging** (`judge_answer`): Evaluates answer quality against golden reference answers
+
+### Key Features:
+- **Smart Routing**: Only retrieves documents when necessary
+- **Quality Control**: Grades document relevance before proceeding
+- **Iterative Refinement**: Rewrites questions if initial retrieval fails
+- **Evaluation**: Judges final answers for medical accuracy and completeness
+
 ## Example Output
 
 ### Rewritten Questions
@@ -96,3 +129,29 @@ data/
 
 🏥 Medical Answer: The patient's current prescription medications include Levothyroxine 75 mcg once daily for thyroid hormone replacement, Atorvastatin 20 mg nightly for hyperlipidemia management, and Aspirin 81 mg daily for cardiovascular prophylaxis. Additionally, the patient takes Vitamin D3 2000 IU daily and Calcium Citrate 500 mg twice daily for bone health, Omega-3 Fish Oil 1000 mg twice daily for cardiovascular support, and a daily multivitamin for general health maintenance.
 ```
+
+## Enhanced Features
+
+### ID-Based Question Matching
+The system now supports precise question identification using unique IDs:
+
+```bash
+python medical_agent.py  # Uses improved ID-based judge matching
+```
+
+- **Precise Matching**: Questions identified by IDs (`fatigue_001`, `diabetes_001`) instead of text matching
+- **Better Evaluation**: More reliable judge scoring using structured question database
+- **Backward Compatible**: Falls back to text-based matching for legacy questions
+
+See `README_ID_SYSTEM.md` for detailed information about the enhanced ID-based system.
+
+## Files
+
+- `medical_agent.py` - Main LangGraph workflow
+- `retriever.py` - Document retrieval with ChromaDB
+- `grader.py` - Document relevance scoring
+- `rewriter.py` - Question rewriting for better retrieval
+- `generate_answer.py` - Medical answer generation
+- `judge_answer.py` - Answer quality evaluation
+- `custom_state.py` - Enhanced state schema with question IDs
+- `question_id_manager.py` - Question ID management utilities

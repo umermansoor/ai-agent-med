@@ -1,54 +1,54 @@
 """
 Document Grader for Medical RAG System
-Grades documents using a binary score for relevance check.
+Evaluates whether retrieved documents are relevant to the medical question.
 """
 
-from pydantic import BaseModel, Field
-from typing import Literal
-from langgraph.graph import MessagesState
 from langchain.chat_models import init_chat_model
-
-# Load shared configuration (includes dotenv loading)
+from custom_state import MedicalRAGState
+from typing import Dict, Any, Literal
 import config
 
-GRADE_PROMPT = (
-    "You are a grader assessing relevance of a retrieved document to a user question. \n "
-    "Here is the retrieved document: \n\n {context} \n\n"
-    "Here is the user question: {question} \n"
-    "If the document contains keyword(s) or semantic meaning related to the user question, grade it as relevant. \n"
-    "Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question."
-)
+GRADER_PROMPT = """
+You are a medical document relevance grader. Your task is to assess whether retrieved medical documents 
+contain information relevant to answering the given medical question.
 
-class GradeDocuments(BaseModel):
-    """Grade documents using a binary score for relevance check."""
+Question: {question}
 
-    binary_score: str = Field(
-        description="Relevance score: 'yes' if relevant, or 'no' if not relevant"
-    )
+Retrieved Documents:
+{documents}
 
+Instructions:
+1. Analyze if the retrieved documents contain medical information that could help answer the question
+2. Consider medical context, patient data, lab results, symptoms, medications, etc.
+3. Return ONLY "yes" if documents are relevant, "no" if not relevant
+
+Decision (yes/no):"""
+
+# Initialize the grader model
 grader_model = init_chat_model("openai:gpt-4o", temperature=0)
 
-def grade_documents(
-    state: MessagesState,
-) -> int:
-    """Determine whether the retrieved documents are relevant to the question.
+def grade_documents(state: MedicalRAGState) -> Literal[1, 0]:
+    """
+    Determines whether the retrieved documents are relevant to the question.
+    
+    Args:
+        state: Current state containing messages
+        
     Returns:
-        1 if documents are relevant (generate answer)
-        0 if documents are not relevant (rewrite question)
+        1 if relevant documents (proceed to generate_answer)
+        0 if not relevant (proceed to rewrite_question)
     """
     question = state["messages"][0].content
-    context = state["messages"][-1].content
-
-    prompt = GRADE_PROMPT.format(question=question, context=context)
-    response = (
-        grader_model
-        .with_structured_output(GradeDocuments).invoke(
-            [{"role": "user", "content": prompt}]
-        )
-    )
-    score = response.binary_score
-
-    if score == "yes":
-        return 1  # Documents are relevant
+    # Get documents from the last message (retrieval results)
+    documents = state["messages"][-1].content if len(state["messages"]) > 1 else ""
+    
+    prompt = GRADER_PROMPT.format(question=question, documents=documents)
+    response = grader_model.invoke([{"role": "user", "content": prompt}])
+    
+    # Parse the response
+    grade = response.content.strip().lower()
+    
+    if "yes" in grade:
+        return 1  # Relevant - proceed to answer generation
     else:
-        return 0  # Documents are not relevant
+        return 0  # Not relevant - rewrite question and retry

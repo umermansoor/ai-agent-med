@@ -1,5 +1,7 @@
 from langgraph.graph import MessagesState
 from langchain.chat_models import init_chat_model
+from custom_state import MedicalRAGState
+from typing import Dict, Any
 
 
 
@@ -72,7 +74,7 @@ Notes:
 
 
 golden_reference_answers = {
-    "why is this patient feeling tired?": (
+    "fatigue_001": (
         "The patient's fatigue is multifactorial, primarily due to:\n\n"
         "1. **Hypothyroidism** — Lab results show TSH 8.2 (high) and Free T4 0.6 (low), "
         "which is diagnostic for primary hypothyroidism. This condition directly causes fatigue, "
@@ -96,25 +98,62 @@ golden_reference_answers = {
         "- Vitamin D level (low)\n"
         "- HbA1c showing prediabetes\n"
         "- hs-CRP elevated (systemic inflammation)\n"
-        "- Patient’s sleep habits (~6 hrs/night, not restorative)\n"
-        "- Patient’s lifestyle: sedentary work, low exercise, diet high in processed foods\n"
+        "- Patient's sleep habits (~6 hrs/night, not restorative)\n"
+        "- Patient's lifestyle: sedentary work, low exercise, diet high in processed foods\n"
         "- Medical history: hypercholesterolemia, hypothyroidism, vitamin D deficiency, prediabetes\n"
         "- Family history (CV risk, thyroid issues)\n"
         "- Reported symptoms: fatigue, weight gain, sluggishness, cold intolerance\n"
     ),
+    "diabetes_001": (
+        "Based on the available laboratory results, the patient does not currently have diabetes but is in the prediabetic range:\n\n"
+        "**Current Status: Prediabetes**\n"
+        "- HbA1c: 5.9% (prediabetic range: 5.7-6.4%)\n"
+        "- This indicates average blood glucose levels over the past 2-3 months are elevated but not yet diabetic\n\n"
+        "**Risk Factors Present:**\n"
+        "- Metabolic syndrome components: elevated hs-CRP, hypercholesterolemia\n"
+        "- Lifestyle factors: sedentary work, inconsistent exercise, processed food diet\n"
+        "- Age and weight status\n\n"
+        "**Recommendations:**\n"
+        "- Lifestyle interventions (diet modification, regular exercise)\n"
+        "- Regular monitoring with repeat HbA1c in 3-6 months\n"
+        "- Address other metabolic risk factors\n\n"
+        "IDEAL CONTEXT (must be present to generate a good answer):\n"
+        "- HbA1c value (5.9%)\n"
+        "- Understanding of prediabetes range (5.7-6.4%)\n"
+        "- Current medications (no diabetes medications listed)\n"
+        "- Risk factors: lifestyle, other metabolic markers\n"
+    ),
 }
 
 
-def judge_answer(state: MessagesState):
-    """Judge the quality of the generated answer against the golden reference answer."""
-    question = state["messages"][0].content
-    generated_answer = state["messages"][-1].content
-    context = state["messages"][-2].content  # Assuming context is the second last message
+def get_question_id_from_text(question_text: str) -> str:
+    """Map question text to question ID for backward compatibility."""
+    question_mapping = {
+        "why is this patient feeling tired?": "fatigue_001",
+        "does the patient have diabetes?": "diabetes_001",
+        # Add more mappings as needed
+    }
+    return question_mapping.get(question_text.lower(), "unknown")
 
-    golden_answer = golden_reference_answers.get(question.lower(), "No golden reference available.")
+
+def judge_answer(state: MedicalRAGState) -> Dict[str, Any]:
+    """Judge the quality of the generated answer against the golden reference answer using ID-based matching."""
+    # Get question ID from state, with fallback to text-based matching
+    question_id = state.get("question_id")
+    if not question_id:
+        # Fallback for backward compatibility
+        question_text = state["messages"][0].content
+        question_id = get_question_id_from_text(question_text)
+    
+    original_question = state.get("original_question", state["messages"][0].content)
+    generated_answer = state["messages"][-1].content
+    context = state.get("retrieved_context", state["messages"][-2].content if len(state["messages"]) > 1 else "")
+
+    # Use ID-based lookup for golden answer
+    golden_answer = golden_reference_answers.get(question_id, "No golden reference available for this question ID.")
 
     prompt = JUDGE_PROMPT.format(
-        question=question,
+        question=original_question,
         generated_answer=generated_answer,
         context=context,
         golden_answer=golden_answer

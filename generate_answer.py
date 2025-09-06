@@ -5,6 +5,8 @@ Generates comprehensive medical answers from retrieved patient data.
 
 from langgraph.graph import MessagesState
 from langchain.chat_models import init_chat_model
+from custom_state import MedicalRAGState
+from typing import Dict, Any
 
 # Load shared configuration (includes dotenv loading)
 import config
@@ -24,7 +26,7 @@ GENERATE_PROMPT = (
 # Initialize the health expert model
 expert_model = init_chat_model("openai:gpt-4o", temperature=0)
 
-def generate_answer(state: MessagesState):
+def generate_answer(state: MedicalRAGState) -> Dict[str, Any]:
     """Generate a medical answer based on patient data."""
     question = state["messages"][0].content
     context = state["messages"][-1].content

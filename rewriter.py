@@ -6,6 +6,8 @@ Rewrites user questions to be more specific and medical-focused.
 from langgraph.graph import MessagesState
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
+from custom_state import MedicalRAGState
+from typing import Dict, Any
 
 # Load shared configuration (includes dotenv loading)
 import config
@@ -41,7 +43,7 @@ REWRITE_PROMPT = (
 # Initialize the rewriter model
 rewriter_model = init_chat_model("openai:gpt-4o", temperature=0)
 
-def rewrite_question(state: MessagesState):
+def rewrite_question(state: MedicalRAGState) -> Dict[str, Any]:
     """Rewrite the original user question to be more medically specific."""
     messages = state["messages"]
     question = messages[0].content

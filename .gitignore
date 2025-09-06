@@ -205,3 +205,14 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ChromaDB files (vector database - regenerated automatically)
+chroma_db/
+*.sqlite3
+*.bin
+*.duckdb
+*.parquet
+
+# Vector embeddings cache
+embeddings_cache/
+vector_store/

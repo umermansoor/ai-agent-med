@@ -30,13 +30,14 @@ grader_model = init_chat_model("openai:gpt-4o", temperature=0)
 
 def grade_documents(
     state: MessagesState,
-) -> Literal["generate_answer", "rewrite_question"]:
-    """Determine whether the retrieved documents are relevant to the question."""
+) -> int:
+    """Determine whether the retrieved documents are relevant to the question.
+    Returns:
+        1 if documents are relevant (generate answer)
+        0 if documents are not relevant (rewrite question)
+    """
     question = state["messages"][0].content
     context = state["messages"][-1].content
-
-    #print("Question:", question)
-    #print("Context:", context)
 
     prompt = GRADE_PROMPT.format(question=question, context=context)
     response = (
@@ -48,6 +49,6 @@ def grade_documents(
     score = response.binary_score
 
     if score == "yes":
-        return "generate_answer"
+        return 1  # Documents are relevant
     else:
-        return "rewrite_question"
+        return 0  # Documents are not relevant

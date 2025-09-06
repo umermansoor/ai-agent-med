@@ -1,10 +1,18 @@
 """
-Question Rewriter for Medical RAG System
-Rewrites user questions to better match medical terminology and available data types.
+Medical Question Rewriter for RAG System
+Rewrites user questions to be more specific and medical-focused.
 """
 
 from langgraph.graph import MessagesState
 from langchain.chat_models import init_chat_model
+from langchain_core.messages import HumanMessage
+
+# Load shared configuration (includes dotenv loading)
+import config
+
+from langgraph.graph import MessagesState
+from langchain.chat_models import init_chat_model
+from langchain_core.messages import HumanMessage
 
 # Load shared configuration
 import config
@@ -41,4 +49,5 @@ def rewrite_question(state: MessagesState):
     prompt = REWRITE_PROMPT.format(question=question)
     response = rewriter_model.invoke([{"role": "user", "content": prompt}])
     
-    return {"messages": [{"role": "user", "content": response.content}]}
+    # Return a proper HumanMessage object instead of dictionary
+    return {"messages": [HumanMessage(content=response.content)]}

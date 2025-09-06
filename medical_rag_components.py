@@ -4,7 +4,7 @@ Medical RAG - Individual Components
 An Example showing retriever, grader, rewriter, and answer generator for medical Q&A.
 """
 
-import glob
+
 
 # Load shared configuration
 import config
@@ -13,64 +13,15 @@ import config
 from grader import grade_documents
 from rewriter import rewrite_question
 from generate_answer import generate_answer
+from retriever import create_retriever
 
 # LangChain imports
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import TextLoader
-from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_openai import OpenAIEmbeddings
 from langchain.tools.retriever import create_retriever_tool
-
-def create_medical_rag_system(patient_id: str = "drapoel") -> tuple:
-    """Load medical documents, create embeddings, store in a vector store, and set up retriever tool."""
-    
-    # Load and process medical documents for the patient
-    documents = []
-    markdown_files = glob.glob(f"data/{patient_id}/**/*.md", recursive=True)
-    
-    for file_path in markdown_files:
-        loader = TextLoader(file_path, encoding='utf-8')
-        documents.extend(loader.load())
-    
-    print(f"📚 Loaded {len(documents)} medical documents")
-    
-    # Split documents into chunks
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=100
-    )
-    doc_splits = text_splitter.split_documents(documents)
-    print(f"📝 Split into {len(doc_splits)} chunks")
-    
-    # Create vector store and retriever
-    print("🔍 Creating embeddings and vector store...")
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-
-    vectorstore = InMemoryVectorStore.from_documents(
-        documents=doc_splits, embedding=embeddings
-    )
-    
-    # Configure retriever to return top 3 most relevant chunks
-    retriever = vectorstore.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": 3}
-    )
-    print(f"📊 Retriever configured to return top 3 most relevant chunks")
-    
-    # Create retriever tool
-    retriever_tool = create_retriever_tool(
-        retriever,
-        "retrieve_medical_info",
-        "Search and return information about patient medical data."
-    )
-    
-    print("✅ Retrieval tool ready")
-    return retriever, retriever_tool
 
 def test_medical_workflow():
     """Test the complete medical RAG workflow."""
-    retriever, retriever_tool = create_medical_rag_system()
+    retriever = create_retriever("drapoel")
     
     # Test question
     original_question = "what prescription medications is the patient taking?"

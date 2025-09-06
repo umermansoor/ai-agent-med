@@ -1,12 +1,12 @@
 """
-Health Expert for Medical RAG System
-Generates medical answers based on retrieved patient data.
+Medical Answer Generator for RAG System
+Generates comprehensive medical answers from retrieved patient data.
 """
 
 from langgraph.graph import MessagesState
 from langchain.chat_models import init_chat_model
 
-# Load shared configuration
+# Load shared configuration (includes dotenv loading)
 import config
 
 GENERATE_PROMPT = (

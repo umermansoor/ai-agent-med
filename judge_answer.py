@@ -2,6 +2,8 @@ from langgraph.graph import MessagesState
 from langchain.chat_models import init_chat_model
 from custom_state import MedicalRAGState
 from typing import Dict, Any
+import json
+import os
 
 
 
@@ -73,57 +75,40 @@ Notes:
 """
 
 
-golden_reference_answers = {
-    "fatigue_001": (
-        "The patient's fatigue is multifactorial, primarily due to:\n\n"
-        "1. **Hypothyroidism** — Lab results show TSH 8.2 (high) and Free T4 0.6 (low), "
-        "which is diagnostic for primary hypothyroidism. This condition directly causes fatigue, "
-        "sluggishness, cold intolerance, and weight gain.\n\n"
-        "2. **Vitamin D Deficiency** — Level of 22 ng/mL (below the normal range of 30–100). "
-        "Low vitamin D contributes to muscle weakness, low mood, and tiredness.\n\n"
-        "3. **Prediabetes** — HbA1c 5.9% places the patient in the prediabetic range. "
-        "This can cause fluctuations in blood glucose and energy crashes, worsening fatigue.\n\n"
-        "4. **Lifestyle & Sleep Factors** — Patient reports ~6 hours of sleep/night, "
-        "a sedentary job, inconsistent exercise, and a diet high in processed carbs and fats, "
-        "all of which contribute to low energy.\n\n"
-        "5. **Systemic Inflammation** — hs-CRP 3.6 mg/L (above 3.0 is high risk). "
-        "Chronic low-grade inflammation is associated with increased fatigue and malaise.\n\n"
-        "Clinical Impression: The fatigue is most likely driven by untreated hypothyroidism, "
-        "but is compounded by vitamin D deficiency, prediabetes, poor sleep/diet, and elevated hs-CRP. "
-        "Addressing hypothyroidism with Levothyroxine, correcting vitamin D levels, improving lifestyle, "
-        "and monitoring metabolic risk should improve symptoms.\n\n"
-        "-------------------------------------------\n"
-        "IDEAL CONTEXT (must be present to generate a good answer):\n"
-        "- Thyroid labs: TSH elevated, Free T4 low (diagnostic for hypothyroidism)\n"
-        "- Vitamin D level (low)\n"
-        "- HbA1c showing prediabetes\n"
-        "- hs-CRP elevated (systemic inflammation)\n"
-        "- Patient's sleep habits (~6 hrs/night, not restorative)\n"
-        "- Patient's lifestyle: sedentary work, low exercise, diet high in processed foods\n"
-        "- Medical history: hypercholesterolemia, hypothyroidism, vitamin D deficiency, prediabetes\n"
-        "- Family history (CV risk, thyroid issues)\n"
-        "- Reported symptoms: fatigue, weight gain, sluggishness, cold intolerance\n"
-    ),
-    "diabetes_001": (
-        "Based on the available laboratory results, the patient does not currently have diabetes but is in the prediabetic range:\n\n"
-        "**Current Status: Prediabetes**\n"
-        "- HbA1c: 5.9% (prediabetic range: 5.7-6.4%)\n"
-        "- This indicates average blood glucose levels over the past 2-3 months are elevated but not yet diabetic\n\n"
-        "**Risk Factors Present:**\n"
-        "- Metabolic syndrome components: elevated hs-CRP, hypercholesterolemia\n"
-        "- Lifestyle factors: sedentary work, inconsistent exercise, processed food diet\n"
-        "- Age and weight status\n\n"
-        "**Recommendations:**\n"
-        "- Lifestyle interventions (diet modification, regular exercise)\n"
-        "- Regular monitoring with repeat HbA1c in 3-6 months\n"
-        "- Address other metabolic risk factors\n\n"
-        "IDEAL CONTEXT (must be present to generate a good answer):\n"
-        "- HbA1c value (5.9%)\n"
-        "- Understanding of prediabetes range (5.7-6.4%)\n"
-        "- Current medications (no diabetes medications listed)\n"
-        "- Risk factors: lifestyle, other metabolic markers\n"
-    ),
-}
+def load_golden_answers(patient_id: str = "drapoel"):
+    """Load golden answers from the JSON file."""
+    golden_file = f"golden_data/{patient_id}/golden.json"
+    if not os.path.exists(golden_file):
+        return {}
+    
+    try:
+        with open(golden_file, 'r') as f:
+            data = json.load(f)
+        
+        # Extract golden answers and format them for the judge
+        golden_answers = {}
+        for question_id, question_data in data.get("questions", {}).items():
+            if "golden_answer" in question_data:
+                golden_content = question_data["golden_answer"]["content"]
+                ideal_context = question_data["golden_answer"].get("ideal_context", [])
+                
+                # Format like the old structure with IDEAL CONTEXT section
+                if ideal_context:
+                    golden_content += "\n\n-------------------------------------------\n"
+                    golden_content += "IDEAL CONTEXT (must be present to generate a good answer):\n"
+                    for context_item in ideal_context:
+                        golden_content += f"- {context_item}\n"
+                
+                golden_answers[question_id] = golden_content
+        
+        return golden_answers
+    except Exception as e:
+        print(f"Error loading golden answers: {e}")
+        return {}
+
+
+# Load golden answers from JSON file instead of hardcoding them
+golden_reference_answers = load_golden_answers("drapoel")
 
 
 def get_question_id_from_text(question_text: str) -> str:

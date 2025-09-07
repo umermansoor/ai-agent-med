@@ -1,22 +1,4 @@
-# GenomiCore Labs™  
-**Genetic Profile Report**  
-**Patient Report**
-
----
-
-**Patient Information**  
-- **Name:** Drapoel Krahs  
-- **Age:** 37  
-- **Gender:** Male  
-- **Ethnicity:** White  
-- **MRN:** 48291734  
-- **Accession #:** GC-2025-09512  
-- **Date Collected:** 08/29/2025  
-- **Date Reported:** 09/02/2025  
-
----
-
-## Genetic Trait Summary
+## Genetic Profile Report / Genetic Trait Summary
 
 | Trait / Gene Region           | Result / Genotype         | Clinical Relevance                               | Flag  |
 |-------------------------------|---------------------------|--------------------------------------------------|-------|
@@ -31,8 +13,6 @@
 | **TCF7L2**                    | Risk allele present       | ↑ Risk for type 2 diabetes                       | *↑*   |
 | **TGFB1 Variant**             | Wild-type                 | No increased fibrosis risk                       |       |
 
----
-
 ## Interpretation
 
 - **Cardiovascular Risk:** Presence of APOE E4 allele and LDLR variant are consistent with Drapoel’s **elevated LDL cholesterol** and **increased cardiovascular risk**.  
@@ -42,10 +22,3 @@
   - **Caffeine sensitivity** → likely to experience jitters or slower caffeine breakdown.  
   - **Lactose intolerance** → predisposed to GI symptoms with dairy.  
   - **FTO variant** → tendency toward weight gain with poor diet/exercise.  
-
-**Note:** This genetic profile is **for informational purposes only**. Results should be correlated with clinical findings and family history.  
-
----
-
-**Genetic Counselor:** Dr. Rellik Elahw, MD (Medical Genetics)  
-**Lab Director:** GenomiCore Labs™ — *“It’s in your code.”*  

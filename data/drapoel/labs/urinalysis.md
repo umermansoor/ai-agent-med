@@ -15,8 +15,3 @@
 | Microscopy                  | None    | None seen             |       |
 
 **Interpretation:** Normal urinalysis. No evidence of infection, proteinuria, or glycosuria.  
-
----
-
-**Physician:** Dr. Rellik Elahw, MD  
-**Lab Director:** LabCore Laboratories™ — *“We get to the core of it.”*  

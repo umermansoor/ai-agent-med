@@ -19,5 +19,4 @@
 | **Coenzyme Q10**           | 100 mg              | Once daily          | Statin-associated muscle protection |
 | **Multivitamin**           | Standard daily dose | Once daily          | General nutritional support       |
 
----
  

@@ -1,21 +1,3 @@
-# LabCore Laboratories™  
-**Additional Diagnostic Panels**  
-**Patient Report**
-
----
-
-**Patient Information**  
-- **Name:** Drapoel Krahs  
-- **Age:** 37  
-- **Gender:** Male  
-- **Ethnicity:** White  
-- **MRN:** 48291734  
-- **Accession #:** LC-2025-09452  
-- **Date Collected:** 08/29/2025  
-- **Date Reported:** 09/01/2025  
-
----
-
 ## Complete Blood Count (CBC)
 
 | Test                        | Result  | Reference Range      | Flag  |

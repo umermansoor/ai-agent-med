@@ -1,22 +1,4 @@
-# LabCore Laboratories™  
-**Comprehensive Metabolic Panel (CMP)**  
-**Patient Report**
-
----
-
-**Patient Information**  
-- **Name:** Drapoel Krahs  
-- **Age:** 37  
-- **Gender:** Male  
-- **Ethnicity:** White  
-- **MRN:** 48291734  
-- **Accession #:** LC-2025-09342  
-- **Date Collected:** 08/29/2025  
-- **Date Reported:** 09/01/2025  
-
----
-
-## Test Results
+## Comprehensive Metabolic Panel (CMP)
 
 | Test                      | Result  | Reference Range          | Flag  |
 |----------------------------|---------|--------------------------|-------|
@@ -38,12 +20,5 @@
 | AST (SGOT) (U/L)          | 24      | 10 – 40                  |       |
 | ALT (SGPT) (U/L)          | 31      | 9 – 46                   |       |
 
----
-
 **Interpretation:**  
 All values within normal reference ranges. No evidence of hepatic, renal, or electrolyte abnormalities at this time. Patient known to have high cholesterol; CMP does not assess lipid profile. Recommend lipid panel follow-up.
-
----
-
-**Physician:** Dr. Rellik Elahw, MD  
-**Lab Director:** LabCore Laboratories™ — *“We get to the core of it.”*  

@@ -1,7 +1,4 @@
-# LabCore Clinics™  
-**Medical Intake Survey**  
-
----
+## Medical Intake Form
 
 **Patient Information**  
 - **Name:** Drapoel Krahs  
@@ -89,11 +86,3 @@
 - **Neuro:** No dizziness, seizures, or migraines  
 - **Psych:** Mild stress, no depression or anxiety diagnosis  
 - **Skin:** No rashes or chronic conditions  
-
----
-
-**Patient Signature:** ________________________  
-**Date:** 08/29/2025  
-
-**Reviewed by:** Dr. Rellik Elahw, MD  
-**LabCore Clinics™ — *“Health, down to the core.”***  

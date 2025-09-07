@@ -30,7 +30,7 @@ def load_documents(patient_id: str):
         loader = TextLoader(file_path, encoding='utf-8')
         documents.extend(loader.load())
     
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100, separators=["\n---\n", "\n# ", "\n## ", "\n"])
     return text_splitter.split_documents(documents)
 
 def create_retriever(patient_id) -> VectorStoreRetriever:

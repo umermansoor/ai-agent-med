@@ -1,6 +1,8 @@
 
 ## Prescription Medications
 
+Last Updated: 2025-07-01
+
 | Medication                | Dose                | Frequency           | Indication                        |
 |---------------------------|---------------------|---------------------|-----------------------------------|
 | **Levothyroxine**         | 75 mcg              | Once daily (AM, fasting) | Primary Hypothyroidism            |

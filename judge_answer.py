@@ -1,6 +1,7 @@
 from langgraph.graph import MessagesState
 from langchain.chat_models import init_chat_model
 from custom_state import MedicalRAGState
+from golden_data_loader import load_golden_answers_formatted
 from typing import Dict, Any
 import json
 import os
@@ -8,7 +9,9 @@ import os
 
 
 JUDGE_PROMPT = """
-You are a judge assessing the quality of a medical answer against golden reference answers.
+You are a judge assessing whether a medical answer reports **accurate, patient-specific facts** compared with a golden reference.
+
+Priority: Accuracy of concrete patient data (medications, dosages, frequencies, lab values, diagnoses, and other explicitly documented information). Do **not** reward speculation or predictions.
 
 Original Question:
 {question}
@@ -22,93 +25,58 @@ System Context:
 Golden Reference Answer:
 {golden_answer}
 
-Your job:
-A) Compare SYSTEM_ANSWER to GOLDEN_ANSWER for medical accuracy and relevance.
-B) Evaluate SYSTEM_CONTEXT against the IDEAL CONTEXT requirements and penalize each missing item.
-
-
 --------------------------------
-INSTRUCTIONS (READ CAREFULLY)
+EVALUATION RULES
 --------------------------------
 
 1) Parse IDEAL CONTEXT
-   - If GOLDEN_ANSWER contains a section titled 'IDEAL CONTEXT' (bulleted list), extract each bullet as a required context item.
-   - If no explicit IDEAL CONTEXT is present, infer key required items from GOLDEN_ANSWER (labs, vitals, diagnoses, symptoms, meds, lifestyle factors) and treat them as the checklist.
+   - If the GOLDEN_ANSWER or 'IDEAL CONTEXT' are missing, do not judge the answer and return "No golden reference available for this question ID." Scores are -1 for both Answer Score and Context Score.
+   - If GOLDEN_ANSWER includes an 'ideal_context' checklist, treat each bullet as REQUIRED.
+   - If not present, infer REQUIRED facts from GOLDEN_ANSWER (e.g., exact medication names + doses + frequencies, lab values, explicit diagnoses).
+   - REQUIRED items may also include **document sources** if they are listed in IDEAL CONTEXT.
 
-2) Identify Context Coverage
-   - For each required context item, check if SYSTEM_CONTEXT contains it (exact value or a clear equivalent).
-   - Mark each item as PRESENT or MISSING.
-   - Count MISSING items.
+2) Fact Checking (Answer Score)
+   Start from 10 and penalize heavily for factual errors or omissions:
+   - Missing a REQUIRED medication: **-3 each**
+   - Wrong medication listed (not in golden answer): **-3 each**
+   - Wrong dosage or frequency: **-2 each**
+   - Wrong lab value or threshold (when explicit): **-2 each**
+   - Stating or implying a condition not supported by explicit data, or “predicting” something already clearly documented: **-3**
+   - Adding minor extras not requested (e.g., listing supplements when the question says not to): **-0.5 each** (cap -2 total)
+   - Using vague language when specifics are available (e.g., “thyroid medicine” instead of “Levothyroxine 100 mcg daily”): **-1**
+   Floor: minimum Answer Score = 1.
 
-3) Grade the Answer (Answer Score: 1–10)
-   - Start from 10.
-   - Subtract 1–2 points for each clinically important discrepancy vs GOLDEN_ANSWER (incorrect fact, harmful advice, omissions of major causes).
-   - Subtract 0.5–1 point for minor omissions or lack of clarity.
-   - Never go below 1.
+3) Context Adequacy (Context Score)
+   Start from 10 and check SYSTEM_CONTEXT against REQUIRED items:
+   - Missing REQUIRED item entirely: **-1 each**
+   - Present but incomplete (e.g., mentions medication without dose/frequency, or dose outdated vs most recent doc): **-0.5**
+   - If a more recent document clearly updates a fact and SYSTEM_CONTEXT omits it, subtract an additional **-1 once total**.
+   Floor: minimum Context Score = 1.
 
-4) Grade the Context (Context Score: 1–10)
-   - Start from 10.
-   - Penalize EACH missing required context item by 1 point.
-     * If an item is partially present (e.g., “thyroid abnormal” but missing the specific TSH/T4 values), subtract 0.5.
-   - If >8 items are missing, cap score at 1.
-   - If critical safety items are missing (e.g., key diagnostic labs directly tied to the question), subtract an additional 1 (once total).
-
-5) Feedback Requirements (most important part):
-   - Explicitly list which required context items were PRESENT and which were MISSING.
-   - Explain how missing context likely affected SYSTEM_ANSWER quality.
-   - Identify major content differences between SYSTEM_ANSWER and GOLDEN_ANSWER, noting any inaccuracies or omissions.
-
-6) Output Format (use exactly this):
-Answer Score: <1–10>
-Context Score: <1–10>
+4) Output Format (must use exactly):
+Answer Score: <1-10>
+Context Score: <1-10>
 Feedback:
-- Similarities/Differences vs Golden Answer: <analysis>
+- Critical Errors/Misses: <bullet list of the highest-impact inaccuracies or omissions>
+- Extras Not Requested: <list, if any>
 - Context Coverage:
-  - Present: <comma-separated checklist items>
-  - Missing: <comma-separated checklist items>
-- Impact of Missing Context on the Answer: <analysis>
+  - Present: <comma-separated REQUIRED items found>
+  - Missing/Incomplete: <comma-separated REQUIRED items missing or partial>
+- Rationale: <brief explanation tying penalties to rules above>
 
-Notes:
-- Prefer concrete, clinical specifics (e.g., "TSH 8.2, Free T4 0.6") over vague mentions.
-- If SYSTEM_ANSWER is good but SYSTEM_CONTEXT is incomplete, reflect that in the Context Score.
-- If the IDEAL CONTEXT has duplicate/overlapping items, merge them reasonably to avoid double-penalizing.
+--------------------------------
+NOTES
+--------------------------------
+- Prefer exact specifics (e.g., “Levothyroxine 100 mcg daily”) over generalities.
+- Heavily penalize missing or incorrect **patient data** over style/wording issues.
+- Do not give credit for reasoning or guesses beyond what is explicitly documented.
+- Always consider **document recency** when determining which version of a fact is correct.
 """
 
 
-def load_golden_answers(patient_id: str = "drapoel"):
-    """Load golden answers from the JSON file."""
-    golden_file = f"golden_data/{patient_id}/golden.json"
-    if not os.path.exists(golden_file):
-        return {}
-    
-    try:
-        with open(golden_file, 'r') as f:
-            data = json.load(f)
-        
-        # Extract golden answers and format them for the judge
-        golden_answers = {}
-        for question_id, question_data in data.get("questions", {}).items():
-            if "golden_answer" in question_data:
-                golden_content = question_data["golden_answer"]["content"]
-                ideal_context = question_data["golden_answer"].get("ideal_context", [])
-                
-                # Format like the old structure with IDEAL CONTEXT section
-                if ideal_context:
-                    golden_content += "\n\n-------------------------------------------\n"
-                    golden_content += "IDEAL CONTEXT (must be present to generate a good answer):\n"
-                    for context_item in ideal_context:
-                        golden_content += f"- {context_item}\n"
-                
-                golden_answers[question_id] = golden_content
-        
-        return golden_answers
-    except Exception as e:
-        print(f"Error loading golden answers: {e}")
-        return {}
 
-
-# Load golden answers from JSON file instead of hardcoding them
-golden_reference_answers = load_golden_answers("drapoel")
+# Load golden answers using the shared utility
+golden_reference_answers = load_golden_answers_formatted("drapoel")
 
 
 def get_question_id_from_text(question_text: str) -> str:

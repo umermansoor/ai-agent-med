@@ -4,6 +4,7 @@ from rewriter import rewrite_question
 from generate_answer import generate_answer
 from judge_answer import judge_answer
 from custom_state import MedicalRAGState
+from golden_data_loader import load_golden_questions_raw
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
@@ -13,20 +14,9 @@ from langchain.chat_models import init_chat_model
 import config
 import json
 import os
+from datetime import datetime
 
 from langchain.tools.retriever import create_retriever_tool
-
-
-def load_golden_questions(patient_id: str = "drapoel"):
-    """Load golden questions from the JSON file."""
-    golden_file = f"golden_data/{patient_id}/golden.json"
-    if not os.path.exists(golden_file):
-        raise FileNotFoundError(f"Golden questions file not found: {golden_file}")
-    
-    with open(golden_file, 'r') as f:
-        data = json.load(f)
-    
-    return data["questions"]
 
 
 def create_workflow():
@@ -103,6 +93,10 @@ def run_single_question(question_data: dict):
         "original_question": question_data["text"],
     }
     
+    # Variables to capture results
+    system_answer = None
+    judge_feedback = None
+    
     step_count = 0
     # Run the workflow
     for chunk in graph.stream(input_state):
@@ -112,19 +106,49 @@ def run_single_question(question_data: dict):
             if "messages" in update and update["messages"]:
                 try:
                     update["messages"][-1].pretty_print()
+                    
+                    # Capture system answer from generate_answer node
+                    if node == "generate_answer":
+                        system_answer = update["messages"][-1].content
+                    
+                    # Capture complete judge feedback from judge_answer node
+                    elif node == "judge_answer":
+                        judge_feedback = update["messages"][-1].content
+                        
                 except Exception as e:
                     print(f"Content: {update['messages'][-1].content}")
             print("-" * 40)
+    
+    # Save results to file
+    save_results(question_data, system_answer, judge_feedback)
     
     print(f"✅ Completed question: {question_data['id']}")
     return True
 
 
+def save_results(question_data: dict, system_answer: str, judge_feedback: str):
+    """Save question, system answer, and complete judge feedback to results.txt"""
+    with open("results.txt", "a", encoding="utf-8") as f:
+        f.write(f"{'='*80}\n")
+        f.write(f"QUESTION ID: {question_data['id']}\n")
+        f.write(f"CATEGORY: {question_data['category']} | DIFFICULTY: {question_data['difficulty']}\n")
+        f.write(f"QUESTION: {question_data['text']}\n")
+        f.write(f"\nSYSTEM ANSWER:\n{system_answer or 'No answer captured'}\n")
+        f.write(f"\nJUDGE EVALUATION:\n{judge_feedback or 'No feedback captured'}\n")
+        f.write(f"{'='*80}\n\n")
+
+
 def main():
     """Main execution function."""
     try:
+        # Clear results file at start
+        with open("results.txt", "w", encoding="utf-8") as f:
+            f.write(f"MEDICAL RAG EVALUATION RESULTS\n")
+            f.write(f"Generated on: {json.dumps(str(datetime.now()))}\n")
+            f.write(f"{'='*80}\n\n")
+        
         # Load golden questions
-        golden_questions = load_golden_questions("drapoel")
+        golden_questions = load_golden_questions_raw("drapoel")
         print(f"📚 Loaded {len(golden_questions)} golden questions")
         
         # Run each question with fresh state
@@ -136,6 +160,7 @@ def main():
                 continue
         
         print(f"\n🎉 Completed processing all {len(golden_questions)} questions!")
+        print(f"📄 Results saved to results.txt")
         
     except Exception as e:
         print(f"❌ Error in main execution: {str(e)}")

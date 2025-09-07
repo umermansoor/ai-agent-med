@@ -9,6 +9,12 @@ import hashlib
 
 import config
 
+# Retriever configuration
+RETRIEVER_CONFIG = {
+    "search_type": "mmr",
+    "search_kwargs": {"k": 10}
+}
+
 def generate_patient_data_checksum(patient_id: str) -> str:
     """Generate single checksum for all patient data files to detect if something has changed."""
     hasher = hashlib.sha256()
@@ -55,7 +61,7 @@ def create_retriever(patient_id) -> VectorStoreRetriever:
         
         if stored_checksum == current_checksum:
             print("✅ Using existing embeddings (no changes detected)")
-            return vectorstore.as_retriever(search_kwargs={"k": 3})
+            return vectorstore.as_retriever(**RETRIEVER_CONFIG)
         else:
             print("🔄 Checksum mismatch - rebuilding...")
             # Delete the existing collection to start fresh
@@ -81,4 +87,4 @@ def create_retriever(patient_id) -> VectorStoreRetriever:
     vectorstore._collection.modify(metadata={"checksum": current_checksum})
     
     print("✅ Retrieval tool ready")
-    return vectorstore.as_retriever(search_kwargs={"k": 3})
+    return vectorstore.as_retriever(**RETRIEVER_CONFIG)

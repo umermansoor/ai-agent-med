@@ -27,7 +27,7 @@ def create_workflow():
     retriever_tool = create_retriever_tool(
         retriever,
         "retrieve_patient_health_data",
-        "Search the current patient's health records and return relevant information. Always use this tool when asked about patient data - no patient ID needed."
+        "Search the current patient's health records using Semantic Search (RAG) and return relevant information. Always use this tool when asked about patient data - no patient ID needed."
     )
 
     def run_retrieval_or_respond(state: MedicalRAGState):
@@ -75,7 +75,6 @@ def run_single_question(question_data: dict):
     print(f"\n{'='*80}")
     print(f"🔍 Question ID: {question_data['id']}")
     print(f"📝 Question: {question_data['text']}")
-    print(f"🏷️  Category: {question_data['category']} | Difficulty: {question_data['difficulty']}")
     print(f"{'='*80}")
     
     # Create fresh workflow instance
@@ -131,7 +130,6 @@ def save_results(question_data: dict, system_answer: str, judge_feedback: str):
     with open("results.txt", "a", encoding="utf-8") as f:
         f.write(f"{'='*80}\n")
         f.write(f"QUESTION ID: {question_data['id']}\n")
-        f.write(f"CATEGORY: {question_data['category']} | DIFFICULTY: {question_data['difficulty']}\n")
         f.write(f"QUESTION: {question_data['text']}\n")
         f.write(f"\nSYSTEM ANSWER:\n{system_answer or 'No answer captured'}\n")
         f.write(f"\nJUDGE EVALUATION:\n{judge_feedback or 'No feedback captured'}\n")

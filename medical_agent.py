@@ -14,15 +14,20 @@ from langchain.chat_models import init_chat_model
 import config
 import json
 import os
+import argparse
 from datetime import datetime
 
 from langchain.tools.retriever import create_retriever_tool
 
 
-def create_workflow():
-    """Create a fresh workflow instance."""
+def create_workflow(use_reranker=True):
+    """Create a fresh workflow instance.
+    
+    Args:
+        use_reranker: If True, use reranked retriever. If False, use base retriever only.
+    """
     llm_model = init_chat_model("openai:gpt-4o", temperature=0)
-    retriever = create_retriever("drapoel")
+    retriever = create_retriever("drapoel", use_reranker=use_reranker)
 
     retriever_tool = create_retriever_tool(
         retriever,
@@ -70,15 +75,21 @@ def create_workflow():
     return workflow.compile()
 
 
-def run_single_question(question_data: dict):
-    """Run a single question through the workflow with fresh state."""
+def run_single_question(question_data: dict, use_reranker=True):
+    """Run a single question through the workflow with fresh state.
+    
+    Args:
+        question_data: Dictionary containing question data
+        use_reranker: If True, use reranked retriever. If False, use base retriever only.
+    """
     print(f"\n{'='*80}")
     print(f"🔍 Question ID: {question_data['id']}")
     print(f"📝 Question: {question_data['text']}")
+    print(f"🔧 Reranker: {'Enabled' if use_reranker else 'Disabled'}")
     print(f"{'='*80}")
     
     # Create fresh workflow instance
-    graph = create_workflow()
+    graph = create_workflow(use_reranker=use_reranker)
     
     # Create input state
     input_state = {
@@ -138,21 +149,31 @@ def save_results(question_data: dict, system_answer: str, judge_feedback: str):
 
 def main():
     """Main execution function."""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Medical RAG Agent')
+    parser.add_argument('--no-reranker', action='store_true', 
+                       help='Disable reranker and use base retriever only')
+    args = parser.parse_args()
+    
+    use_reranker = not args.no_reranker
+    
     try:
         # Clear results file at start
         with open("results.txt", "w", encoding="utf-8") as f:
             f.write(f"MEDICAL RAG EVALUATION RESULTS\n")
             f.write(f"Generated on: {json.dumps(str(datetime.now()))}\n")
+            f.write(f"Reranker: {'Enabled' if use_reranker else 'Disabled'}\n")
             f.write(f"{'='*80}\n\n")
         
         # Load golden questions
         golden_questions = load_golden_questions_raw("drapoel")
         print(f"📚 Loaded {len(golden_questions)} golden questions")
+        print(f"🔧 Reranker: {'Enabled' if use_reranker else 'Disabled'}")
         
         # Run each question with fresh state
         for question_id, question_data in golden_questions.items():
             try:
-                run_single_question(question_data)
+                run_single_question(question_data, use_reranker=use_reranker)
             except Exception as e:
                 print(f"❌ Error processing question {question_id}: {str(e)}")
                 continue

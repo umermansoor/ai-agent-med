@@ -45,8 +45,13 @@ def load_documents(patient_id: str):
     )
     return text_splitter.split_documents(documents)
 
-def create_retriever(patient_id) -> RerankedRetriever:
-    """Create a retriever with reranking for the given patient."""
+def create_retriever(patient_id, use_reranker=True):
+    """Create a retriever with optional reranking for the given patient.
+    
+    Args:
+        patient_id: The patient ID to create retriever for
+        use_reranker: If True, wrap with RerankedRetriever. If False, return base retriever only.
+    """
     current_checksum = generate_patient_data_checksum(patient_id)
     collection_name = f"patient_{patient_id}"
     
@@ -84,6 +89,12 @@ def create_retriever(patient_id) -> RerankedRetriever:
         vectorstore._collection.modify(metadata={"checksum": current_checksum})
         print("✅ Embeddings ready")
     
-    # Create base retriever and wrap with reranking
+    # Create base retriever and optionally wrap with reranking
     base_retriever = vectorstore.as_retriever(**RETRIEVER_CONFIG)
-    return RerankedRetriever(base_retriever, top_k=5)
+    
+    if use_reranker:
+        print("🔧 Enabling reranker")
+        return RerankedRetriever(base_retriever, top_k=5)
+    else:
+        print("🔧 Reranker disabled - using base retriever only")
+        return base_retriever

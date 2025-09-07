@@ -1,4 +1,4 @@
-## Genetic Profile Report / Genetic Trait Summary
+## Genetic Profile Report and Genetic Trait Summary
 
 | Trait / Gene Region           | Result / Genotype         | Clinical Relevance                               | Flag  |
 |-------------------------------|---------------------------|--------------------------------------------------|-------|
@@ -14,7 +14,6 @@
 | **TGFB1 Variant**             | Wild-type                 | No increased fibrosis risk                       |       |
 
 ## Interpretation
-
 - **Cardiovascular Risk:** Presence of APOE E4 allele and LDLR variant are consistent with Drapoel’s **elevated LDL cholesterol** and **increased cardiovascular risk**.  
 - **Metabolic Risk:** TCF7L2 variant supports the **prediabetes (HbA1c 5.9%)** finding.  
 - **Endocrine Risk:** No direct thyroid-associated mutations, but mild metabolic risk could compound hypothyroidism.  

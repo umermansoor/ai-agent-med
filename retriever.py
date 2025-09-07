@@ -30,7 +30,7 @@ def load_documents(patient_id: str):
         loader = TextLoader(file_path, encoding='utf-8')
         documents.extend(loader.load())
     
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100, separators=["\n---\n", "\n# ", "\n## ", "\n"])
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=250, separators=["\n---\n", "\n# ", "\n## ", "\n"])
     return text_splitter.split_documents(documents)
 
 def create_retriever(patient_id) -> VectorStoreRetriever:
@@ -58,6 +58,8 @@ def create_retriever(patient_id) -> VectorStoreRetriever:
             return vectorstore.as_retriever(search_kwargs={"k": 3})
         else:
             print("🔄 Checksum mismatch - rebuilding...")
+            # Delete the existing collection to start fresh
+            vectorstore._client.delete_collection(collection_name)
             
     except Exception as e:
         print(f"📝 Exception loading collection: {e}")

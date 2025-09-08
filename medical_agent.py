@@ -2,7 +2,7 @@ from retriever import create_retriever
 from grader import grade_documents
 from rewriter import rewrite_question
 from generate_answer import generate_answer
-from judge_answer import judge_answer
+from judge_answer_split import judge_answer
 from custom_state import MedicalRAGState
 from golden_data_loader import load_golden_questions_raw
 

@@ -65,26 +65,22 @@ def load_golden_answers(patient_id: str = "drapoel"):
         golden_answers = {}
         with open(golden_file, 'r') as f:
             for line in f:
-                if line.strip():
-                    data = json.loads(line)
-                    question_id = data.get("id")
-                    golden_answer = data.get("golden_answer", {})
+                if not line.strip():
+                    continue
+                data = json.loads(line)
+                question_id = data.get("id")
+                golden_answer = data.get("golden_answer", {})
+                
+                if not (question_id and golden_answer):
+                    continue
                     
-                    if question_id and golden_answer:
-                        # Extract content and ideal_context
-                        content = golden_answer.get("content", [])
-                        ideal_context = golden_answer.get("ideal_context", [])
-                        
-                        # Format content as a list
-                        if isinstance(content, list):
-                            formatted_content = "\n".join([f"- {item}" for item in content])
-                        else:
-                            formatted_content = str(content)
-                        
-                        golden_answers[question_id] = {
-                            "content": formatted_content,
-                            "ideal_context": ideal_context
-                        }
+                content = golden_answer.get("content", [])
+                formatted_content = "\n".join([f"- {item}" for item in content]) if isinstance(content, list) else str(content)
+                
+                golden_answers[question_id] = {
+                    "content": formatted_content,
+                    "ideal_context": golden_answer.get("ideal_context", [])
+                }
         
         return golden_answers
     except Exception as e:
@@ -96,80 +92,76 @@ def load_golden_answers(patient_id: str = "drapoel"):
 golden_reference_answers = load_golden_answers("drapoel")
 
 
-def judge_context(state: MedicalRAGState) -> Dict[str, Any]:
-    """Judge the quality of the retrieved context against ideal context requirements."""
-    # Get question ID from state
+def _get_judgment_data(state: MedicalRAGState):
+    """Helper function to extract common judgment data from state."""
     question_id = state.get("question_id")
     if not question_id:
-        return {"context_judgment": "No question ID available for context judgment."}
+        return None, "No question ID available for judgment."
     
-    original_question = state.get("original_question", state["messages"][0].content)
-    context = state.get("retrieved_context", state["messages"][-2].content if len(state["messages"]) > 1 else "")
-
-    # Use ID-based lookup for golden answer
     golden_data = golden_reference_answers.get(question_id)
     if not golden_data:
-        return {"context_judgment": "No golden reference available for this question ID."}
+        return None, "No golden reference available for this question ID."
+    
+    original_question = state.get("original_question", state["messages"][0].content)
+    return {
+        "question_id": question_id,
+        "original_question": original_question,
+        "golden_data": golden_data
+    }, None
 
-    golden_answer = golden_data["content"]
-    ideal_context = "\n".join([f"- {item}" for item in golden_data["ideal_context"]])
+
+def _invoke_judge_model(prompt: str) -> str:
+    """Helper function to invoke the judgment model."""
+    judge_model = init_chat_model("openai:gpt-4o", temperature=0)
+    response = judge_model.invoke([{"role": "user", "content": prompt}])
+    return response.content
+
+
+def judge_context(state: MedicalRAGState) -> Dict[str, Any]:
+    """Judge the quality of the retrieved context against ideal context requirements."""
+    data, error = _get_judgment_data(state)
+    if error:
+        return {"context_judgment": error}
+    
+    context = state.get("retrieved_context", state["messages"][-2].content if len(state["messages"]) > 1 else "")
+    ideal_context = "\n".join([f"- {item}" for item in data["golden_data"]["ideal_context"]])
 
     prompt = CONTEXT_JUDGE_PROMPT.format(
-        question=original_question,
+        question=data["original_question"],
         context=context,
-        golden_answer=golden_answer,
+        golden_answer=data["golden_data"]["content"],
         ideal_context=ideal_context
     )
 
-    judge_model = init_chat_model("openai:gpt-4o", temperature=0)
-    response = judge_model.invoke([{"role": "user", "content": prompt}])
-
-    return {"context_judgment": response.content}
+    return {"context_judgment": _invoke_judge_model(prompt)}
 
 
 def judge_answer_accuracy(state: MedicalRAGState) -> Dict[str, Any]:
     """Judge the accuracy of the generated answer against the golden reference."""
-    # Get question ID from state
-    question_id = state.get("question_id")
-    if not question_id:
-        return {"answer_judgment": "No question ID available for answer judgment."}
+    data, error = _get_judgment_data(state)
+    if error:
+        return {"answer_judgment": error}
     
-    original_question = state.get("original_question", state["messages"][0].content)
     generated_answer = state["messages"][-1].content
 
-    # Use ID-based lookup for golden answer
-    golden_data = golden_reference_answers.get(question_id)
-    if not golden_data:
-        return {"answer_judgment": "No golden reference available for this question ID."}
-
-    golden_answer = golden_data["content"]
-
     prompt = ANSWER_JUDGE_PROMPT.format(
-        question=original_question,
+        question=data["original_question"],
         generated_answer=generated_answer,
-        golden_answer=golden_answer
+        golden_answer=data["golden_data"]["content"]
     )
 
-    judge_model = init_chat_model("openai:gpt-4o", temperature=0)
-    response = judge_model.invoke([{"role": "user", "content": prompt}])
-
-    return {"answer_judgment": response.content}
+    return {"answer_judgment": _invoke_judge_model(prompt)}
 
 
 def judge_answer(state: MedicalRAGState) -> Dict[str, Any]:
     """Combined judge that runs both context and answer evaluations."""
-    # Run context judgment
     context_result = judge_context(state)
-    
-    # Run answer judgment  
     answer_result = judge_answer_accuracy(state)
     
-    # Combine results
     combined_feedback = f"""=== CONTEXT EVALUATION ===
 {context_result.get('context_judgment', 'No context judgment available')}
 
 === ANSWER EVALUATION ===
 {answer_result.get('answer_judgment', 'No answer judgment available')}"""
     
-    # Create proper AIMessage
     return {"messages": [AIMessage(content=combined_feedback)]}

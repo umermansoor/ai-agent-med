@@ -13,7 +13,7 @@ import config
 # Configuration
 RETRIEVER_CONFIG = {
     "search_type": "similarity",  # Use similarity search for better scoring
-    "search_kwargs": {"k": 25}    # Get 25 documents from 104 total chunks for reranking
+    "search_kwargs": {"k": 25}    # Get 25 documents to allow reranker to choose from
 }
 
 def generate_patient_data_checksum(patient_id: str) -> str:

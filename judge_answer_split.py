@@ -124,6 +124,7 @@ def judge_context(state: MedicalRAGState) -> Dict[str, Any]:
         return {"context_judgment": error}
     
     context = state.get("retrieved_context", state["messages"][-2].content if len(state["messages"]) > 1 else "")
+    
     ideal_context = "\n".join([f"- {item}" for item in data["golden_data"]["ideal_context"]])
 
     prompt = CONTEXT_JUDGE_PROMPT.format(

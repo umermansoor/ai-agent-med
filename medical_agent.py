@@ -1,6 +1,7 @@
 from retriever import create_retriever
 from grader import grade_documents
 from rewriter import rewrite_question
+from compress import compress_context
 from generate_answer import generate_answer
 from judge_answer_split import judge_answer
 from custom_state import MedicalRAGState
@@ -44,6 +45,7 @@ def create_workflow(use_reranker=True):
 
     workflow.add_node(run_retrieval_or_respond)
     workflow.add_node("retrieve", ToolNode([retriever_tool])) 
+    workflow.add_node(compress_context)
     workflow.add_node(rewrite_question)
     workflow.add_node(generate_answer)
     workflow.add_node(judge_answer)
@@ -63,11 +65,12 @@ def create_workflow(use_reranker=True):
         "retrieve",
         grade_documents,
         {
-            1: "generate_answer",
+            1: "compress_context",
             0: "rewrite_question",
         },
     )
 
+    workflow.add_edge("compress_context", "generate_answer")
     workflow.add_edge("generate_answer", "judge_answer")
     workflow.add_edge("judge_answer", END)
     workflow.add_edge("rewrite_question", "run_retrieval_or_respond")
